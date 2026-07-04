@@ -209,3 +209,79 @@ def latest_engine(key: str) -> dict | None:
             .order_by(EngineOutput.ts.desc())
         ).first()
         return {"engine": key, "payload": row.payload, "ts": row.ts.isoformat()} if row else None
+
+
+# ============================================================
+# Lead Gen Engine — the deep, interactive one:
+# acquire leads → capture into CRM → convert each with AI.
+# ============================================================
+import random  # noqa: E402
+from datetime import date  # noqa: E402
+
+_LEAD_FIRST = ["Aarav", "Diya", "Kabir", "Ananya", "Vivaan", "Isha", "Reyansh",
+               "Myra", "Arjun", "Saanvi", "Aditya", "Kiara", "Rohan", "Navya"]
+_LEAD_LAST = ["Sharma", "Iyer", "Nair", "Mehta", "Reddy", "Kapoor", "Bose", "Rao"]
+_LEAD_CO = ["Bloom Wellness", "PureLeaf Co", "Nira Beauty", "SkinCraft", "Ojas Naturals",
+            "Lumen Labs", "Rasa Beauty", "Prakriti Organics", "Vayu Cosmetics", "Ira Aesthetics"]
+_LEAD_SRC = ["Meta Ads", "Instagram Reels", "WhatsApp broadcast", "Google Search", "Influencer collab", "Pop-up event"]
+
+
+def capture_leads(channel: str | None = None, n: int = 4) -> list[dict]:
+    """Simulate a lead-gen campaign bringing fresh leads into the CRM."""
+    src = channel or random.choice(_LEAD_SRC)
+    created = []
+    with Session(db_engine) as s:
+        for _ in range(n):
+            lead = CrmLead(
+                company=random.choice(_LEAD_CO),
+                contact=f"{random.choice(_LEAD_FIRST)} {random.choice(_LEAD_LAST)}",
+                stage="discovery",
+                deal_size_inr=float(random.choice([50_000, 120_000, 250_000, 500_000])),
+                last_touch=date.today().isoformat(),
+                owner=f"AI · {src}",
+                score=round(random.uniform(45, 92), 1),
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+            created.append({
+                "id": lead.id, "company": lead.company, "contact": lead.contact,
+                "stage": lead.stage, "deal_size_inr": lead.deal_size_inr,
+                "score": lead.score, "source": src,
+            })
+    return created
+
+
+def list_leads(limit: int = 12) -> list[dict]:
+    """Most recent leads — the captured pipeline."""
+    with Session(db_engine) as s:
+        rows = s.exec(select(CrmLead).order_by(CrmLead.id.desc()).limit(limit)).all()
+        return [{
+            "id": l.id, "company": l.company, "contact": l.contact, "stage": l.stage,
+            "deal_size_inr": l.deal_size_inr, "score": l.score, "owner": l.owner,
+        } for l in rows]
+
+
+async def convert_lead(lead_id: int) -> dict:
+    """AI generates a personalized conversion play for one specific lead."""
+    with Session(db_engine) as s:
+        lead = s.get(CrmLead, lead_id)
+        if not lead:
+            raise ValueError("lead not found")
+        biz = s.exec(select(Business)).first()
+    system = (
+        "You are the Lead Gen Engine's conversion assistant. Given one lead, "
+        "write the single best next action to convert them. Return only JSON."
+    )
+    user = f"""Our business: {biz.name if biz else 'the business'} — {biz.industry if biz else 'D2C'}
+Lead: {lead.contact} at {lead.company} · stage {lead.stage} · score {lead.score}/100 · deal ~₹{lead.deal_size_inr:,.0f}
+
+Return JSON:
+{{
+  "channel": "best channel to reach them (WhatsApp / email / call)",
+  "message": "the actual ready-to-send message, personalized to this lead",
+  "next_step": "the follow-up action after they respond"
+}}"""
+    result = await complete_json(system, user, max_tokens=500)
+    result["lead_id"] = lead_id
+    return result

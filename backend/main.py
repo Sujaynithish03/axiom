@@ -16,7 +16,10 @@ from models import Business, Recommendation, RiskAlert, AgentEvent, Decision, St
 from mocks.seed import seed_all
 from metrics import compute_kpis, kpi_history
 from orchestrator import run_boardroom
-from engines import run_engine, latest_engine, ENGINE_KEYS
+from engines import (
+    run_engine, latest_engine, ENGINE_KEYS,
+    capture_leads, list_leads, convert_lead,
+)
 from llm import stream_chat, check_ollama
 
 
@@ -266,6 +269,38 @@ async def run_engine_endpoint(key: str):
         "meta": {"engine": key},
     })
     return {"engine": key, "payload": result}
+
+
+# ------- Lead Gen Engine: capture + convert -------
+class CapturePayload(BaseModel):
+    channel: str | None = None
+    count: int = 4
+
+
+@app.get("/api/leadgen/leads")
+async def leadgen_leads(limit: int = 12):
+    return list_leads(limit=limit)
+
+
+@app.post("/api/leadgen/capture")
+async def leadgen_capture(payload: CapturePayload):
+    leads = capture_leads(channel=payload.channel, n=max(1, min(payload.count, 8)))
+    await bus.publish({
+        "agent": "leadgen", "kind": "engine",
+        "content": f"🧲 Captured {len(leads)} new leads via {payload.channel or 'AI campaign'}.",
+        "meta": {"count": len(leads)},
+    })
+    return leads
+
+
+@app.post("/api/leadgen/convert/{lead_id}")
+async def leadgen_convert(lead_id: int):
+    try:
+        return await convert_lead(lead_id)
+    except ValueError:
+        raise HTTPException(404, "lead not found")
+    except Exception as e:
+        raise HTTPException(500, f"convert failed: {e}")
 
 
 # ------- Boardroom trigger -------

@@ -8,6 +8,23 @@ Built to the sponsor 5D framework: **Discover → Design → Deliver → Develop
 
 ---
 
+## The 6 business engines
+
+On top of the live agent boardroom, AXIOM exposes the sponsor's six AI-driven **engines** — each a workspace that runs a structured local-LLM generation over your real business data:
+
+| Engine | What it produces |
+|--------|------------------|
+| **Strategy** | Market research, brand positioning, AI pricing tiers, go-to-market moves |
+| **Marketing** | A 360° multi-channel plan — channels with budgets & expected ROAS, big idea, ready ad copy |
+| **Lead Gen** | Target segments, digital campaigns, a ready-to-send WhatsApp broadcast, physical lead ideas |
+| **Sales** | A sales funnel, priority actions, and a draft outreach email |
+| **Analytics** | A 3-month MRR forecast, competitive insight, and a quarterly roadmap |
+| **Customer Success** | Customer-health read, at-risk segments, success playbook, chatbot greeting |
+
+Each engine lives at `POST /api/engines/{key}/run` and persists its latest output. The frontend renders any engine's output through one generic recursive view, so the shape is resilient to small-model variation.
+
+---
+
 ## 60-second setup
 
 ### 1. Install Ollama
