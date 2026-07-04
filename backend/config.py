@@ -6,8 +6,9 @@ class Settings(BaseSettings):
 
     # Ollama
     ollama_host: str = "http://localhost:11434"
-    # Change to qwen2.5:3b if RAM-constrained, or llama3.1:8b as alternative
-    ollama_model: str = "qwen2.5:7b-instruct"
+    # Using the locally-installed llama3.2 (fast, ~2GB). Upgrade to
+    # qwen2.5:7b-instruct for stronger reasoning once pulled.
+    ollama_model: str = "llama3.2:latest"
     embed_model: str = "nomic-embed-text"
     llm_temperature: float = 0.3
     llm_max_tokens: int = 400

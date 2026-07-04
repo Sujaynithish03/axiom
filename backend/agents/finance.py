@@ -1,4 +1,5 @@
 from agents.base import BaseAgent
+from llm import safe_num, safe_str
 
 
 SYSTEM = """You are the Finance Agent inside AXIOM OS — a hawkish CFO for an early-stage D2C brand.
@@ -45,16 +46,24 @@ class FinanceAgent(BaseAgent):
             burn_mult=k["burn_multiple"], churn_30=k["churn_30"], churn_delta=k["churn_delta"],
         )
         result = await self.structured(SYSTEM, prompt)
-        verdict = result.get("verdict", "")
-        decision = result.get("top_decision", {})
-        guard = result.get("spending_guardrail", "")
+        verdict = safe_str(result.get("verdict"))
+        decision = result.get("top_decision") or {}
+        guard = safe_str(result.get("spending_guardrail"))
+
+        # Normalize so formatting/persistence never crashes on a stringified number
+        decision["action"] = safe_str(decision.get("action"))
+        decision["amount_inr"] = safe_num(decision.get("amount_inr"), 0)
+        decision["rationale"] = safe_str(decision.get("rationale"))
+        result["verdict"] = verdict
+        result["top_decision"] = decision
+        result["spending_guardrail"] = guard
 
         if verdict:
             await self.emit("insight", f"CFO verdict: {verdict}")
-        if decision.get("action"):
+        if decision["action"]:
             await self.emit(
                 "recommendation",
-                f"{decision['action']} — ₹{decision.get('amount_inr',0):,}",
+                f"{decision['action']} — ₹{decision['amount_inr']:,.0f}",
                 meta=decision,
             )
         if guard:

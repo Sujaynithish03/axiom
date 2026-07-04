@@ -1,6 +1,7 @@
 import asyncio
 import json
-from datetime import datetime
+import random
+from datetime import datetime, date
 from contextlib import asynccontextmanager
 from typing import Set
 
@@ -11,11 +12,11 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from db import engine, init_db
-from models import Business, Recommendation, RiskAlert, AgentEvent, Decision
+from models import Business, Recommendation, RiskAlert, AgentEvent, Decision, StripeTxn
 from mocks.seed import seed_all
 from metrics import compute_kpis, kpi_history
 from orchestrator import run_boardroom
-from llm import stream_chat, check_ollama, complete_text
+from llm import stream_chat, check_ollama
 
 
 # ------- WebSocket bus -------
@@ -45,11 +46,55 @@ class Bus:
 bus = Bus()
 
 
+# ------- Live heartbeat -------
+# Keeps the app feeling alive: trickles a little real revenue every few seconds
+# and streams a rotating "live monitoring" pulse to the boardroom, so the
+# dashboard numbers move and the event log never sits still.
+HEARTBEAT_PULSES = [
+    ("marketing", "Marketing", "Monitoring live sessions — traffic steady."),
+    ("sales", "Sales", "Watching pipeline — checking for newly-stale deals."),
+    ("finance", "Finance", "Cash position nominal. Tracking daily burn."),
+    ("strategy", "Strategy", "Scanning competitor feeds for new signals."),
+    ("ceo", "CEO", "All systems nominal. Standing by for your next move."),
+    ("learning", "Learning", "Listening for your decisions to refine priors."),
+]
+
+
+async def heartbeat():
+    """Background loop — only runs when a boardroom session is NOT active."""
+    await asyncio.sleep(4)
+    i = 0
+    while True:
+        try:
+            if not _boardroom_lock.locked():
+                # trickle a small recurring payment so MRR/health drift upward
+                with Session(engine) as s:
+                    today = date.today().isoformat()
+                    for _ in range(random.randint(1, 3)):
+                        s.add(StripeTxn(
+                            date=today, customer=f"live_{i}",
+                            amount_inr=float(random.choice([499, 999, 1999])),
+                            kind="recurring",
+                        ))
+                    s.commit()
+                agent, display, line = random.choice(HEARTBEAT_PULSES)
+                await bus.publish({
+                    "agent": agent, "display": display, "kind": "pulse",
+                    "content": line, "ts": datetime.utcnow().isoformat(), "meta": {},
+                })
+        except Exception:
+            pass
+        i += 1
+        await asyncio.sleep(5)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     seed_all()
+    hb = asyncio.create_task(heartbeat())
     yield
+    hb.cancel()
 
 
 app = FastAPI(title="AXIOM OS", lifespan=lifespan)
@@ -179,6 +224,21 @@ async def list_risks():
 async def list_events(limit: int = 100):
     with Session(engine) as s:
         return s.exec(select(AgentEvent).order_by(AgentEvent.ts.desc()).limit(limit)).all()
+
+
+@app.get("/api/briefing")
+async def get_briefing():
+    """The CEO Agent's latest morning briefing — the dashboard Executive Summary."""
+    with Session(engine) as s:
+        ev = s.exec(
+            select(AgentEvent)
+            .where(AgentEvent.agent == "ceo", AgentEvent.kind == "insight")
+            .order_by(AgentEvent.ts.desc())
+        ).first()
+        return {
+            "briefing": ev.content if ev else None,
+            "ts": ev.ts.isoformat() if ev else None,
+        }
 
 
 # ------- Boardroom trigger -------

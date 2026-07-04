@@ -3,12 +3,24 @@ import KpiTile from "./KpiTile";
 import RecommendationCard from "./RecommendationCard";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useEffect, useMemo } from "react";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles, Volume2 } from "lucide-react";
 
 export default function Dashboard() {
-  const { kpis, history, recommendations, fetchAll, business } = useAxiom();
+  const { kpis, history, recommendations, fetchAll, business, executiveSummary } = useAxiom();
 
-  useEffect(() => { fetchAll(); }, []);
+  const speak = () => {
+    if (!executiveSummary || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(executiveSummary));
+  };
+
+  useEffect(() => {
+    fetchAll();
+    // Live refresh — the backend heartbeat keeps trickling revenue, so the
+    // numbers and trend chart visibly move without a manual refresh.
+    const id = setInterval(fetchAll, 6000);
+    return () => clearInterval(id);
+  }, []);
 
   const briefing = useMemo(() => {
     return recommendations.find(
@@ -50,14 +62,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
-      <header className="mb-6 flex items-start justify-between">
+      <header className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted font-mono">Dashboard</div>
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] uppercase tracking-widest text-muted font-mono">Dashboard</div>
+            <span className="flex items-center gap-1 text-[10px] font-mono text-mint uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-ring" /> Live
+            </span>
+          </div>
           <h1 className="text-2xl font-bold mt-1">{business?.name || "Business"}</h1>
           <div className="text-muted text-sm mt-1">{business?.industry} · {business?.stage}</div>
         </div>
         {briefing && (
-          <div className="max-w-md bg-surface border-l-2 border-mint p-4 rounded">
+          <div className="w-full md:max-w-md bg-surface border-l-2 border-mint p-4 rounded">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-mint font-mono mb-1.5">
               <Sparkles size={12} /> Morning briefing — top decision
             </div>
@@ -66,6 +83,31 @@ export default function Dashboard() {
           </div>
         )}
       </header>
+
+      {/* Executive Summary — the CEO Agent's morning briefing */}
+      <section className="mb-6 bg-gradient-to-br from-surface to-surface2 border border-mint/20 rounded-lg p-5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-mint font-mono">
+            <Sparkles size={12} /> Executive Summary · CEO Agent
+          </div>
+          {executiveSummary && (
+            <button
+              onClick={speak}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-mint transition font-mono"
+              title="Listen to your briefing"
+            >
+              <Volume2 size={14} /> Listen
+            </button>
+          )}
+        </div>
+        <p className="text-sm leading-relaxed text-text/90">
+          {executiveSummary || (
+            <span className="text-muted italic">
+              No briefing yet. Click "Start day" and your CEO Agent will synthesize one from all six agents.
+            </span>
+          )}
+        </p>
+      </section>
 
       {/* Top KPI row — the 9 required metrics */}
       <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-6">

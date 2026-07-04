@@ -1,8 +1,42 @@
 """Thin wrapper around Ollama for streaming + JSON-mode agent calls."""
 import json
+import re
 from typing import AsyncIterator, Optional
 import httpx
 from config import settings
+
+
+def safe_num(value, default: float = 0.0) -> float:
+    """Coerce a model-produced value into a float.
+
+    Small local models frequently return numbers as strings like "50000",
+    "₹50,000", "3.2x", or "~2.1", and sometimes null. Strip everything that
+    isn't part of a number and parse; fall back to `default` on failure.
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    if value is None:
+        return default
+    if isinstance(value, str):
+        # keep digits, one decimal point, and a leading minus sign
+        cleaned = re.sub(r"[^0-9.\-]", "", value)
+        # collapse accidental multiple dots/minuses
+        cleaned = re.sub(r"(?<=.)-", "", cleaned)
+        if cleaned.count(".") > 1:
+            first = cleaned.find(".")
+            cleaned = cleaned[: first + 1] + cleaned[first + 1:].replace(".", "")
+        try:
+            return float(cleaned) if cleaned not in ("", "-", ".", "-.") else default
+        except ValueError:
+            return default
+    return default
+
+
+def safe_str(value, default: str = "") -> str:
+    """Coerce a possibly-null model value into a string."""
+    if value is None:
+        return default
+    return str(value)
 
 
 async def stream_chat(

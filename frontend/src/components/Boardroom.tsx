@@ -13,25 +13,25 @@ const AGENT_META: Record<string, { display: string; role: string; color: string 
 };
 
 export default function Boardroom() {
-  const { events, agentStreams, agentPhase, currentPhase, runBoardroom } = useAxiom();
+  const { events, agentStreams, agentPhase, agentPulse, currentPhase, runBoardroom } = useAxiom();
 
   const recentEvents = useMemo(() => events.slice(-40).reverse(), [events]);
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
-      <header className="flex items-start justify-between mb-6">
+      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
           <div className="text-[10px] uppercase tracking-widest text-muted font-mono">
             The boardroom
           </div>
-          <h1 className="text-2xl font-bold mt-1">Your AI executives, thinking now</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-1">Your AI executives, thinking now</h1>
           <p className="text-muted text-sm mt-1">
             Six agents run in parallel. Every token they generate streams here live.
           </p>
         </div>
         <button
           onClick={runBoardroom}
-          className="flex items-center gap-2 bg-mint text-bg font-medium text-sm py-2 px-4 rounded hover:bg-mint/90 transition"
+          className="flex items-center justify-center gap-2 bg-mint text-bg font-medium text-sm py-2 px-4 rounded hover:bg-mint/90 transition shrink-0"
         >
           <Rocket size={14} /> Run boardroom
         </button>
@@ -53,6 +53,7 @@ export default function Boardroom() {
           const stream = agentStreams[key] || "";
           const phase = agentPhase[key];
           const isActive = phase && phase !== "done";
+          const pulse = agentPulse[key];
           return (
             <motion.div
               key={key}
@@ -77,8 +78,19 @@ export default function Boardroom() {
                 )}
               </div>
               <div className="flex-1 overflow-y-auto text-xs font-mono text-text/80 leading-relaxed whitespace-pre-wrap">
-                {stream || <span className="text-muted italic">Idle. Waiting for boardroom trigger…</span>}
-                {isActive && <span className="cursor" />}
+                {stream ? (
+                  <>
+                    {stream}
+                    {isActive && <span className="cursor" />}
+                  </>
+                ) : pulse ? (
+                  <span className="flex items-start gap-1.5 text-muted">
+                    <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-ring mt-1 shrink-0" />
+                    <span className="italic">{pulse}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted italic">Connecting to live feed…</span>
+                )}
               </div>
             </motion.div>
           );

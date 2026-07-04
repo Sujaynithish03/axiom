@@ -8,8 +8,10 @@ interface State {
   history: any[];
   recommendations: Recommendation[];
   business: Business | null;
+  executiveSummary: string | null; // CEO morning briefing
   agentStreams: Record<string, string>; // running text per agent
   agentPhase: Record<string, string>; // last kind per agent
+  agentPulse: Record<string, string>; // live heartbeat line per agent (idle)
   currentPhase: string;
   connect: () => void;
   fetchAll: () => Promise<void>;
@@ -28,8 +30,10 @@ export const useAxiom = create<State>((set, get) => ({
   history: [],
   recommendations: [],
   business: null,
+  executiveSummary: null,
   agentStreams: Object.fromEntries(AGENTS.map((a) => [a, ""])),
   agentPhase: {},
+  agentPulse: {},
   currentPhase: "",
 
   connect: () => {
@@ -43,6 +47,14 @@ export const useAxiom = create<State>((set, get) => ({
     ws.onmessage = (msg) => {
       try {
         const e: AgentEventMsg = JSON.parse(msg.data);
+
+        // Live heartbeat pulses drive a per-agent "monitoring" line without
+        // cluttering the real event log.
+        if (e.kind === "pulse") {
+          set({ agentPulse: { ...get().agentPulse, [e.agent]: e.content } });
+          return;
+        }
+
         const events = [...get().events, e].slice(-300);
         const patch: Partial<State> = { events };
 
@@ -75,13 +87,17 @@ export const useAxiom = create<State>((set, get) => ({
   },
 
   fetchAll: async () => {
-    const [kpis, hist, recs, biz] = await Promise.all([
+    const [kpis, hist, recs, biz, brief] = await Promise.all([
       fetch("/api/kpis").then((r) => r.json()),
       fetch("/api/kpis/history?days=30").then((r) => r.json()),
       fetch("/api/recommendations?limit=30").then((r) => r.json()),
       fetch("/api/business").then((r) => r.json()),
+      fetch("/api/briefing").then((r) => r.json()).catch(() => ({ briefing: null })),
     ]);
-    set({ kpis, history: hist, recommendations: recs, business: biz });
+    set({
+      kpis, history: hist, recommendations: recs, business: biz,
+      executiveSummary: brief?.briefing ?? null,
+    });
   },
 
   runBoardroom: async () => {

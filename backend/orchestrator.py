@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from db import engine
 from models import Business, Recommendation
 from metrics import compute_kpis
+from llm import safe_num
 from agents import (
     CeoAgent, MarketingAgent, SalesAgent,
     FinanceAgent, StrategyAgent, LearningAgent,
@@ -27,58 +28,92 @@ async def _load_business_ctx() -> dict:
         }
 
 
+def _s(value, default: str = "") -> str:
+    """Null-safe string for building recommendation bodies."""
+    return default if value is None else str(value)
+
+
 async def _persist_recommendations(reports: dict, business_id: int):
-    """Turn agent recommendation events into persisted Recommendation rows the UI can list."""
-    with Session(engine) as s:
-        # Marketing
-        for r in reports.get("marketing", {}).get("recommendations", []):
-            s.add(Recommendation(
+    """Turn agent recommendation events into persisted Recommendation rows the UI can list.
+
+    Each agent block is isolated in its own try/except so one malformed field
+    from the local model can never wipe out every other agent's recommendations.
+    """
+    rows: list[Recommendation] = []
+
+    # Marketing
+    try:
+        for r in reports.get("marketing", {}).get("recommendations", []) or []:
+            rows.append(Recommendation(
                 business_id=business_id, agent="marketing",
-                title=r.get("title", "Campaign"),
-                body=r.get("action", "") + " — " + r.get("why", ""),
-                predicted_impact_inr=float(r.get("budget_inr", 0)) * float(r.get("predicted_roas", 1)),
+                title=_s(r.get("title"), "Campaign"),
+                body=_s(r.get("action")) + " — " + _s(r.get("why")),
+                predicted_impact_inr=safe_num(r.get("budget_inr")) * safe_num(r.get("predicted_roas"), 1),
                 confidence=0.7, payload=r,
             ))
-        # Sales
-        for d in reports.get("sales", {}).get("priority_deals", []):
-            s.add(Recommendation(
+    except Exception:
+        pass
+
+    # Sales
+    try:
+        for d in reports.get("sales", {}).get("priority_deals", []) or []:
+            rows.append(Recommendation(
                 business_id=business_id, agent="sales",
-                title=f"Unblock {d.get('company','deal')}",
-                body=d.get("action", "") + " — " + d.get("reason", ""),
-                predicted_impact_inr=float(d.get("estimated_close_lift_inr", 0)),
+                title=f"Unblock {_s(d.get('company'), 'deal')}",
+                body=_s(d.get("action")) + " — " + _s(d.get("reason")),
+                predicted_impact_inr=safe_num(d.get("estimated_close_lift_inr")),
                 confidence=0.65, payload=d,
             ))
-        # Finance
-        fd = reports.get("finance", {}).get("top_decision", {})
+    except Exception:
+        pass
+
+    # Finance
+    try:
+        fd = reports.get("finance", {}).get("top_decision", {}) or {}
         if fd.get("action"):
-            s.add(Recommendation(
+            rows.append(Recommendation(
                 business_id=business_id, agent="finance",
-                title=fd.get("action", "Cash decision"),
-                body=fd.get("rationale", ""),
-                predicted_impact_inr=float(fd.get("amount_inr", 0)),
+                title=_s(fd.get("action"), "Cash decision"),
+                body=_s(fd.get("rationale")),
+                predicted_impact_inr=safe_num(fd.get("amount_inr")),
                 confidence=0.8, payload=fd,
             ))
-        # Strategy
-        sb = reports.get("strategy", {}).get("strategic_bet", {})
+    except Exception:
+        pass
+
+    # Strategy
+    try:
+        sb = reports.get("strategy", {}).get("strategic_bet", {}) or {}
         if sb.get("bet"):
-            s.add(Recommendation(
+            rows.append(Recommendation(
                 business_id=business_id, agent="strategy",
-                title=sb.get("bet", "Strategic bet"),
-                body=sb.get("rationale", ""),
+                title=_s(sb.get("bet"), "Strategic bet"),
+                body=_s(sb.get("rationale")),
                 predicted_impact_inr=0,
-                confidence=float(sb.get("confidence", 0.6)),
+                confidence=safe_num(sb.get("confidence"), 0.6),
                 payload=sb,
             ))
-        # CEO decisions
-        for dec in reports.get("ceo", {}).get("decisions", []):
-            s.add(Recommendation(
+    except Exception:
+        pass
+
+    # CEO decisions
+    try:
+        for dec in reports.get("ceo", {}).get("decisions", []) or []:
+            rows.append(Recommendation(
                 business_id=business_id, agent="ceo",
-                title=f"P{dec.get('rank',0)}: {dec.get('title','Decision')}",
-                body=dec.get("why", ""),
+                title=f"P{_s(dec.get('rank'), '?')}: {_s(dec.get('title'), 'Decision')}",
+                body=_s(dec.get("why")),
                 predicted_impact_inr=0,
                 confidence=0.85, payload=dec,
             ))
-        s.commit()
+    except Exception:
+        pass
+
+    if rows:
+        with Session(engine) as s:
+            for row in rows:
+                s.add(row)
+            s.commit()
 
 
 async def run_boardroom(emit: Callable[[dict], Awaitable[None]]) -> dict:

@@ -66,8 +66,11 @@ def compute_kpis(business_id: int = 1) -> dict:
         # --- Derived scores ---
         # Growth score: rewards recent revenue delta
         growth_score = _clamp(50 + growth_pct * 2)
-        # Customer health: 100 - churn impact
-        customer_health = _clamp(90 - churn_30 * 3)
+        # Customer health: starts high, penalized by churn *rate* not raw count,
+        # plus an extra hit if churn is accelerating vs the prior period.
+        churn_rate_penalty = min(churn_30 * 0.5, 45)      # gentle, caps at -45
+        accel_penalty = max(churn_delta, 0) * 0.4          # only accelerating churn hurts
+        customer_health = _clamp(95 - churn_rate_penalty - accel_penalty)
         # Market readiness: how easy is it to win right now (inverse of pressure + comp signals)
         market_readiness = _clamp(80 - market_pressure + (30 if churn_delta < 3 else 0))
         # Revenue opportunity: recovering lost bounce + closing stale deals

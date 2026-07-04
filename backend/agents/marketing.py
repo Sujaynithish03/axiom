@@ -1,4 +1,5 @@
 from agents.base import BaseAgent
+from llm import safe_num, safe_str
 
 
 SYSTEM = """You are the Marketing Agent inside AXIOM OS, an AI executive team for a D2C skincare founder in India.
@@ -36,7 +37,7 @@ class MarketingAgent(BaseAgent):
     role = "Campaigns & growth"
 
     async def run(self, ctx: dict) -> dict:
-        from sqlmodel import Session, select, func
+        from sqlmodel import Session, select
         from db import engine
         from models import GaEvent
         from datetime import date, timedelta
@@ -73,11 +74,19 @@ class MarketingAgent(BaseAgent):
 
         if cause:
             await self.emit("insight", f"Root cause: {cause}")
+        # Normalize model output so downstream formatting/persistence never crashes
+        for r in recs:
+            r["budget_inr"] = safe_num(r.get("budget_inr"), 0)
+            r["predicted_roas"] = safe_num(r.get("predicted_roas"), 1)
+            r["title"] = safe_str(r.get("title"), "Campaign")
+            r["action"] = safe_str(r.get("action"))
+            r["why"] = safe_str(r.get("why"))
+
         for r in recs:
             await self.emit(
                 "recommendation",
-                f"{r.get('title','Campaign')} — {r.get('action','')} (Budget ₹{r.get('budget_inr',0):,}, ROAS {r.get('predicted_roas',0)}x)",
+                f"{r['title']} — {r['action']} (Budget ₹{r['budget_inr']:,.0f}, ROAS {r['predicted_roas']}x)",
                 meta=r,
             )
         await self.emit("done", f"{len(recs)} campaign plays drafted.")
-        return {"agent": "marketing", "recommendations": recs, "cause": cause}
+        return {"agent": "marketing", "recommendations": recs, "cause": safe_str(cause)}

@@ -1,4 +1,5 @@
 from agents.base import BaseAgent
+from llm import safe_str
 
 
 SYSTEM = """You are the CEO Agent inside AXIOM OS — the chief of staff.
@@ -57,11 +58,16 @@ class CeoAgent(BaseAgent):
         f = reports.get("finance", {})
         st = reports.get("strategy", {})
 
-        mkt_top = m.get("recommendations", [{}])[0].get("title", "n/a") if m.get("recommendations") else "n/a"
-        sales_top = s.get("priority_deals", [{}])[0].get("company", "n/a") if s.get("priority_deals") else "n/a"
-        fin_top = f.get("top_decision", {}).get("action", "n/a")
-        strat_threat = st.get("top_threat", {}).get("competitor", "n/a") + " — " + st.get("top_threat", {}).get("move", "")
-        strat_bet = st.get("strategic_bet", {}).get("bet", "n/a")
+        recs = m.get("recommendations") or [{}]
+        deals = s.get("priority_deals") or [{}]
+        threat = st.get("top_threat") or {}
+        bet_obj = st.get("strategic_bet") or {}
+
+        mkt_top = safe_str(recs[0].get("title"), "n/a")
+        sales_top = safe_str(deals[0].get("company"), "n/a")
+        fin_top = safe_str((f.get("top_decision") or {}).get("action"), "n/a")
+        strat_threat = safe_str(threat.get("competitor"), "n/a") + " — " + safe_str(threat.get("move"))
+        strat_bet = safe_str(bet_obj.get("bet"), "n/a")
 
         prompt = USER_TEMPLATE.format(
             business_name=ctx.get("business_name", "your business"),

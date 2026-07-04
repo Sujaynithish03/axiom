@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from sqlmodel import SQLModel, Session, create_engine
 from config import settings
 
@@ -9,7 +10,7 @@ engine = create_engine(
 
 
 def init_db():
-    import models  # noqa: F401 - register tables
+    import models  # noqa: F400 - register tables
     SQLModel.metadata.create_all(engine)
 
 
