@@ -53,6 +53,15 @@ class Recommendation(SQLModel, table=True):
     payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
 
+class EngineOutput(SQLModel, table=True):
+    """Latest AI output for each of the 6 business engines."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    business_id: int = Field(foreign_key="business.id")
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    engine: str  # strategy | marketing | leadgen | sales | analytics | success
+    payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+
+
 class RiskAlert(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(foreign_key="business.id")

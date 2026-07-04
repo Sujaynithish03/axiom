@@ -13,12 +13,16 @@ interface State {
   agentPhase: Record<string, string>; // last kind per agent
   agentPulse: Record<string, string>; // live heartbeat line per agent (idle)
   currentPhase: string;
+  engineOutputs: Record<string, any>; // latest payload per engine
+  engineBusy: Record<string, boolean>; // is an engine currently generating
   connect: () => void;
   fetchAll: () => Promise<void>;
   runBoardroom: () => Promise<void>;
   decide: (id: number, action: "approved" | "dismissed") => Promise<void>;
   execute: (id: number) => Promise<void>;
   saveBusiness: (b: Partial<Business>) => Promise<void>;
+  fetchEngine: (key: string) => Promise<void>;
+  runEngine: (key: string) => Promise<void>;
 }
 
 const AGENTS = ["ceo", "marketing", "sales", "finance", "strategy", "learning"];
@@ -35,6 +39,8 @@ export const useAxiom = create<State>((set, get) => ({
   agentPhase: {},
   agentPulse: {},
   currentPhase: "",
+  engineOutputs: {},
+  engineBusy: {},
 
   connect: () => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -129,5 +135,28 @@ export const useAxiom = create<State>((set, get) => ({
     });
     const saved = await res.json();
     set({ business: saved });
+  },
+
+  fetchEngine: async (key) => {
+    try {
+      const r = await fetch(`/api/engines/${key}`).then((x) => x.json());
+      if (r?.payload) {
+        set({ engineOutputs: { ...get().engineOutputs, [key]: r.payload } });
+      }
+    } catch {}
+  },
+
+  runEngine: async (key) => {
+    set({ engineBusy: { ...get().engineBusy, [key]: true } });
+    try {
+      const r = await fetch(`/api/engines/${key}/run`, { method: "POST" }).then((x) => x.json());
+      if (r?.payload) {
+        set({ engineOutputs: { ...get().engineOutputs, [key]: r.payload } });
+      }
+    } catch {
+      // leave previous output in place
+    } finally {
+      set({ engineBusy: { ...get().engineBusy, [key]: false } });
+    }
   },
 }));

@@ -75,7 +75,8 @@ async def stream_chat(
                     break
 
 
-async def complete_json(system: str, user: str, temperature: float = 0.2) -> dict:
+async def complete_json(system: str, user: str, temperature: float = 0.2,
+                        max_tokens: int | None = None) -> dict:
     """Non-streaming JSON call — used when we need a structured object back."""
     payload = {
         "model": settings.ollama_model,
@@ -85,7 +86,10 @@ async def complete_json(system: str, user: str, temperature: float = 0.2) -> dic
         ],
         "stream": False,
         "format": "json",
-        "options": {"temperature": temperature, "num_predict": settings.llm_max_tokens},
+        "options": {
+            "temperature": temperature,
+            "num_predict": max_tokens if max_tokens is not None else settings.llm_max_tokens,
+        },
     }
     async with httpx.AsyncClient(timeout=180) as client:
         r = await client.post(f"{settings.ollama_host}/api/chat", json=payload)

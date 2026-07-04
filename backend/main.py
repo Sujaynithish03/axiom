@@ -16,6 +16,7 @@ from models import Business, Recommendation, RiskAlert, AgentEvent, Decision, St
 from mocks.seed import seed_all
 from metrics import compute_kpis, kpi_history
 from orchestrator import run_boardroom
+from engines import run_engine, latest_engine, ENGINE_KEYS
 from llm import stream_chat, check_ollama
 
 
@@ -239,6 +240,32 @@ async def get_briefing():
             "briefing": ev.content if ev else None,
             "ts": ev.ts.isoformat() if ev else None,
         }
+
+
+# ------- The six business engines -------
+@app.get("/api/engines/{key}")
+async def get_engine(key: str):
+    """Latest stored output for one engine (null if never run)."""
+    if key not in ENGINE_KEYS:
+        raise HTTPException(404, f"unknown engine: {key}")
+    return latest_engine(key)
+
+
+@app.post("/api/engines/{key}/run")
+async def run_engine_endpoint(key: str):
+    """Run one engine's AI generation now and return the fresh output."""
+    if key not in ENGINE_KEYS:
+        raise HTTPException(404, f"unknown engine: {key}")
+    try:
+        result = await run_engine(key)
+    except Exception as e:
+        raise HTTPException(500, f"engine failed: {e}")
+    await bus.publish({
+        "agent": key, "kind": "engine",
+        "content": f"✳️ {key.capitalize()} Engine generated a fresh plan.",
+        "meta": {"engine": key},
+    })
+    return {"engine": key, "payload": result}
 
 
 # ------- Boardroom trigger -------
