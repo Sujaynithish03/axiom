@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  background: #070A14;
+  color: #E8ECF5;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0E1424; }
+::-webkit-scrollbar-thumb { background: #1F2942; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2A3555; }
+
+/* Terminal-cursor blink for streaming agents */
+@keyframes cursor-blink { 50% { opacity: 0; } }
+.cursor::after {
+  content: "▍";
+  color: #00E5A0;
+  margin-left: 2px;
+  animation: cursor-blink 1s steps(2) infinite;
+}
+
+/* Pulse for live indicators */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(0, 229, 160, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(0, 229, 160, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 229, 160, 0); }
+}
+.pulse-ring {
+  animation: pulse-ring 2s infinite;
+}
+
+/* Subtle scanline for the boardroom */
+.scanline {
+  background-image: linear-gradient(rgba(0,229,160,0.03) 50%, transparent 50%);
+  background-size: 100% 3px;
+}
