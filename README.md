@@ -56,10 +56,16 @@ Open **http://localhost:5173**. Click **Start day**. Watch six agents think.
 
 ## What you'll see
 
-- **Dashboard** — the 9 required KPIs (Business Health, Growth, Revenue Opportunity, Lead Score, Customer Health, Market Readiness, MRR, Runway, Burn Multiple) + a live recommendations feed with **Approve / Execute / Dismiss** buttons.
-- **Boardroom** — the signature view. Six agent cards side-by-side, each streaming their token-by-token thinking in real time via WebSocket. Below: a full event log.
+- **Dashboard** — an **Executive Summary** (the CEO Agent's morning briefing, with a 🔊 *Listen* text-to-speech button) on top of the 9 required KPIs (Business Health, Growth, Revenue Opportunity, Lead Score, Customer Health, Market Readiness, MRR, Runway, Burn Multiple) + a live recommendations feed with **Approve / Execute / Dismiss** buttons. A pulsing **● LIVE** badge shows the numbers are updating on their own.
+- **Boardroom** — the signature view. Six agent cards side-by-side, each streaming their token-by-token thinking in real time via WebSocket. When idle, every card shows a live "monitoring" pulse so the room is never dead. Below: a full event log.
 - **Copilot** — chat with your AI executive team. Every reply is grounded in your live KPIs and recent agent recommendations.
 - **Business** — the onboarding profile. Edit anytime; agents pick up new context on the next boardroom run.
+
+### Always-on, never static
+
+A **live heartbeat** runs in the background the whole time the app is open: it trickles a little real revenue every few seconds (so MRR, Growth, and Business Health drift on their own) and streams a rotating per-agent "monitoring" pulse over the WebSocket. The Dashboard auto-refreshes every 6 seconds, so the trend chart and KPI tiles move without a manual reload. The heartbeat pauses automatically while a boardroom session is running, so it never interferes with the real agents.
+
+Responsive out of the box: on a phone the sidebar collapses into a top bar + bottom tab navigation.
 
 ---
 
