@@ -1,5 +1,5 @@
 import { useAxiom } from "../store";
-import { LayoutDashboard, MessageSquare, Users, Rocket, Building2 } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Users, Rocket, Building2, ShieldCheck } from "lucide-react";
 import { ENGINES } from "../engines";
 
 interface NavItem { key: string; label: string; icon: any; color?: string; }
@@ -22,6 +22,7 @@ export default function Layout({
   const engineNav: NavItem[] = ENGINES.map((e) => ({ key: e.key, label: e.label, icon: e.icon, color: e.color }));
   const extras: NavItem[] = [
     { key: "copilot", label: "Copilot", icon: MessageSquare },
+    { key: "security", label: "Security", icon: ShieldCheck },
     { key: "onboarding", label: "Business", icon: Building2 },
   ];
 

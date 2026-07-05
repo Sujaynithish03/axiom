@@ -7,6 +7,7 @@ import Copilot from "./components/Copilot";
 import Onboarding from "./components/Onboarding";
 import EngineView from "./components/EngineView";
 import LeadGenView from "./components/LeadGenView";
+import SecurityView from "./components/SecurityView";
 import { ENGINES } from "./engines";
 
 const ENGINE_KEYS = ENGINES.map((e) => e.key);
@@ -26,6 +27,7 @@ export default function App() {
       {view === "dashboard" && <Dashboard />}
       {view === "copilot" && <Copilot />}
       {view === "onboarding" && <Onboarding />}
+      {view === "security" && <SecurityView />}
       {view === "leadgen" && <LeadGenView />}
       {ENGINE_KEYS.includes(view) && view !== "leadgen" && <EngineView key={view} engineKey={view} />}
     </Layout>

@@ -118,3 +118,18 @@ class CompetitorSignal(SQLModel, table=True):
     competitor: str
     signal: str
     detail: str
+
+
+class AuditLog(SQLModel, table=True):
+    """Append-only record of every LLM interaction. Stores hashes + counts,
+    never raw content — provably auditable without holding sensitive data."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    action: str            # e.g. "copilot", "engine_chat:strategy"
+    input_hash: str
+    output_hash: str
+    input_chars: int = 0
+    output_chars: int = 0
+    pii_redacted: int = 0      # PII items masked before the model saw them
+    secrets_blocked: int = 0   # leaked secrets scrubbed from output
+    status: str = "ok"

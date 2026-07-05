@@ -98,6 +98,19 @@ Watch the CEO Agent synthesize all four into a coherent morning briefing.
 
 ---
 
+## Security (the LLM boundary)
+
+Four protections wrap every AI call — see the **Security** tab in the app:
+
+1. **PII redaction** — emails, phones, PAN/GST and card numbers are masked to typed placeholders (`[EMAIL_1]`) before any text reaches the model. Real personal data never crosses the boundary.
+2. **Injection defense** — untrusted user text is fenced in `<untrusted_content>` tags and blatant override phrases ("ignore previous instructions") are neutralised; the model is told to treat it as data, not commands.
+3. **Output filtering** — every response is scanned for leaked secrets (OpenAI/AWS/GitHub/Slack/Google key patterns) and scrubbed to `[REDACTED_SECRET]`.
+4. **Audit log** — every LLM call is recorded append-only with SHA-256 hashes and counts (never raw content) at `GET /api/audit`.
+
+*Multi-tenant Row-Level Security / JWT scoping is a production concern for the hosted multi-business deployment; this local single-tenant build focuses on the LLM-boundary protections above, where the real leak risk sits.*
+
+---
+
 ## Architecture
 
 ```

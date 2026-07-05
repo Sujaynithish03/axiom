@@ -10,6 +10,9 @@ from db import engine as db_engine
 from models import Business, CrmLead, EngineOutput
 from metrics import compute_kpis
 from llm import complete_json
+from security import (
+    secure_input, fence_untrusted, filter_output, audit, INJECTION_SYSTEM_RULE,
+)
 
 
 def _business_ctx() -> dict:
@@ -237,17 +240,20 @@ async def engine_chat(key: str, message: str) -> dict:
     ctx = _business_ctx()
     k = ctx["kpis"]
 
+    # Security layer: mask PII + neutralise injection before the model sees it.
+    safe_msg, _mapping, pii_count = secure_input(message)
+
     persona = _ENGINE_PERSONA.get(key, "an AI business engine")
     system = (
         f"You are {persona} for {ctx['name']} ({ctx['industry']}). "
         "Answer the founder's message conversationally and specifically, grounded in the "
         "current plan and metrics. Decide whether they are asking you to CHANGE the plan. "
-        "Return only valid JSON."
+        "Return only valid JSON." + INJECTION_SYSTEM_RULE
     )
     user = f"""Current plan (JSON): {_json.dumps(payload)[:1600]}
 Live metrics: Business Health {k['business_health']}/100 · MRR ₹{k['mrr']:,.0f} · Growth {k['growth_pct']:+.1f}%.
 
-Founder says: "{message}"
+Founder says: {fence_untrusted(safe_msg)}
 
 Return JSON:
 {{
@@ -258,8 +264,11 @@ Return JSON:
 
     meta = await complete_json(system, user, max_tokens=450)
     reply = meta.get("reply") or "Here's my take."
+    reply, secrets_blocked = filter_output(reply)
     apply = bool(meta.get("apply_change"))
     instruction = (meta.get("instruction") or "").strip()
+    audit(f"engine_chat:{key}", source_text=message, output_text=reply,
+          pii_count=pii_count, secrets_blocked=secrets_blocked)
 
     new_payload = None
     if apply and instruction:
