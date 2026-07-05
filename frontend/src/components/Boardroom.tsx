@@ -58,8 +58,8 @@ export default function Boardroom() {
             <motion.div
               key={key}
               layout
-              className={`bg-surface border border-border rounded p-4 h-64 flex flex-col ${
-                isActive ? "border-mint/40" : ""
+              className={`bg-gradient-to-br from-surface to-[#0a1020] border border-border rounded-lg p-4 h-64 flex flex-col hover-lift ${
+                isActive ? "border-mint/50 depth" : ""
               }`}
             >
               <div className="flex items-center gap-2 mb-3">

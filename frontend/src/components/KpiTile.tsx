@@ -47,21 +47,33 @@ export default function KpiTile({
   const decimals = isNum && !Number.isInteger(value as number) ? 1 : 0;
   const display = isNum ? animated.toFixed(decimals) : value;
 
-  const borderTone =
-    tone === "positive" ? "border-l-mint" :
-    tone === "negative" ? "border-l-danger" :
-    tone === "warning" ? "border-l-warn" :
-    "border-l-border";
+  const glow =
+    tone === "positive" ? "#00E5A0" :
+    tone === "negative" ? "#FF6B6B" :
+    tone === "warning" ? "#FFB454" :
+    "#2A3555";
 
   return (
-    <div className={`bg-surface border border-border ${borderTone} border-l-2 p-4 rounded`}>
-      <div className="text-[10px] uppercase tracking-widest text-muted font-mono">{label}</div>
-      <div className="mt-1.5 flex items-baseline gap-1">
-        <div className={`font-mono font-bold text-text tabular-nums ${size === "lg" ? "text-3xl" : "text-2xl"}`}>
-          {display}
+    <div
+      className="group relative overflow-hidden rounded-lg p-4 border border-border/80 bg-gradient-to-br from-surface to-[#0a1020] hover-lift"
+      style={{ borderLeft: `2px solid ${glow}` }}
+    >
+      {/* faint accent glow that intensifies on hover */}
+      <div
+        className="pointer-events-none absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"
+        style={{ background: glow }}
+      />
+      <div className="relative">
+        <div className="text-[10px] uppercase tracking-widest text-muted font-mono">{label}</div>
+        <div className="mt-1.5 flex items-baseline gap-1">
+          <div
+            className={`font-mono font-bold text-text tabular-nums ${size === "lg" ? "text-3xl" : "text-2xl"}`}
+            style={size === "lg" ? { textShadow: `0 0 22px ${glow}55` } : undefined}
+          >
+            {display}
+          </div>
+          {unit && <div className="text-xs text-muted font-mono">{unit}</div>}
         </div>
-        {unit && <div className="text-xs text-muted font-mono">{unit}</div>}
-      </div>
       {delta !== undefined && delta !== null && (
         <div className={`flex items-center gap-1 mt-2 text-xs font-mono
           ${delta > 0 ? "text-mint" : delta < 0 ? "text-danger" : "text-muted"}`}>
@@ -69,6 +81,7 @@ export default function KpiTile({
           {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
         </div>
       )}
+      </div>
     </div>
   );
 }
