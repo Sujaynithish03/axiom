@@ -3,10 +3,13 @@ import KpiTile from "./KpiTile";
 import RecommendationCard from "./RecommendationCard";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useEffect, useMemo } from "react";
-import { AlertTriangle, Sparkles, Volume2 } from "lucide-react";
+import { AlertTriangle, Sparkles, Volume2, Zap, Loader2, Maximize2 } from "lucide-react";
 
 export default function Dashboard() {
-  const { kpis, history, recommendations, fetchAll, business, executiveSummary } = useAxiom();
+  const {
+    kpis, history, recommendations, fetchAll, business, executiveSummary,
+    simulating, simProgress, simTicker, lastRisk, simulateDay,
+  } = useAxiom();
 
   const speak = () => {
     if (!executiveSummary || !("speechSynthesis" in window)) return;
@@ -14,13 +17,20 @@ export default function Dashboard() {
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(executiveSummary));
   };
 
+  const presentMode = () => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) el.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  };
+
   useEffect(() => {
     fetchAll();
     // Live refresh — the backend heartbeat keeps trickling revenue, so the
     // numbers and trend chart visibly move without a manual refresh.
-    const id = setInterval(fetchAll, 6000);
+    // Poll fast while a day is being simulated so the animation feels live.
+    const id = setInterval(fetchAll, simulating ? 1800 : 6000);
     return () => clearInterval(id);
-  }, []);
+  }, [simulating]);
 
   const briefing = useMemo(() => {
     return recommendations.find(
@@ -83,6 +93,59 @@ export default function Dashboard() {
           </div>
         )}
       </header>
+
+      {/* Simulate a busy day — the cinematic demo control */}
+      <section className="mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={simulateDay}
+            disabled={simulating}
+            className="flex items-center gap-2 bg-mint text-bg font-semibold text-sm py-2.5 px-4 rounded hover:bg-mint/90 transition disabled:opacity-70"
+          >
+            {simulating ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
+            {simulating ? "Simulating a busy day…" : "Simulate a busy day"}
+          </button>
+          <button
+            onClick={presentMode}
+            className="flex items-center gap-2 border border-border text-muted hover:text-text hover:border-mint/40 text-sm py-2.5 px-4 rounded transition"
+          >
+            <Maximize2 size={14} /> Present mode
+          </button>
+          {simulating && (
+            <div className="flex-1 min-w-[160px] h-1.5 bg-surface2 rounded-full overflow-hidden">
+              <div className="h-full bg-mint transition-all duration-500" style={{ width: `${Math.round(simProgress * 100)}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Live event ticker + risk spotlight */}
+        {(simulating || simTicker.length > 0) && (
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="lg:col-span-2 bg-surface border border-border rounded-lg p-3 h-28 overflow-hidden">
+              <div className="text-[10px] uppercase tracking-widest text-mint font-mono mb-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-ring" /> Live event stream
+              </div>
+              <div className="space-y-0.5 font-mono text-xs">
+                {simTicker.slice(0, 4).map((t, i) => (
+                  <div key={i} className={`truncate ${t.kind === "risk" ? "text-danger" : t.kind === "done" ? "text-mint" : "text-text/80"}`}
+                       style={{ opacity: 1 - i * 0.22 }}>
+                    {t.content}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className={`rounded-lg p-3 border ${lastRisk ? "border-danger bg-danger/5 animate-pulse" : "border-border bg-surface"}`}>
+              <div className="text-[10px] uppercase tracking-widest font-mono mb-1.5 flex items-center gap-1.5"
+                   style={{ color: lastRisk ? "#FF6B6B" : "#8B93A7" }}>
+                <AlertTriangle size={11} /> Risk spotlight
+              </div>
+              <div className="text-xs text-text/90 leading-snug">
+                {lastRisk || "No anomalies detected during simulation."}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Executive Summary — the CEO Agent's morning briefing */}
       <section className="mb-6 bg-gradient-to-br from-surface to-surface2 border border-mint/20 rounded-lg p-5">

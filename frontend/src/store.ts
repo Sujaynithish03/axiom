@@ -15,8 +15,13 @@ interface State {
   currentPhase: string;
   engineOutputs: Record<string, any>; // latest payload per engine
   engineBusy: Record<string, boolean>; // is an engine currently generating
+  simulating: boolean; // "Simulate a busy day" in progress
+  simProgress: number; // 0..1
+  simTicker: { content: string; ts: string; kind: string }[]; // live sim feed
+  lastRisk: string | null; // most recent risk alert content
   connect: () => void;
   fetchAll: () => Promise<void>;
+  simulateDay: () => Promise<void>;
   runBoardroom: () => Promise<void>;
   decide: (id: number, action: "approved" | "dismissed") => Promise<void>;
   execute: (id: number) => Promise<void>;
@@ -41,6 +46,10 @@ export const useAxiom = create<State>((set, get) => ({
   currentPhase: "",
   engineOutputs: {},
   engineBusy: {},
+  simulating: false,
+  simProgress: 0,
+  simTicker: [],
+  lastRisk: null,
 
   connect: () => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -58,6 +67,36 @@ export const useAxiom = create<State>((set, get) => ({
         // cluttering the real event log.
         if (e.kind === "pulse") {
           set({ agentPulse: { ...get().agentPulse, [e.agent]: e.content } });
+          return;
+        }
+
+        // "Simulate a busy day" event stream — drives the live ticker,
+        // progress bar, risk spotlight, and fast metric refresh.
+        if (e.kind === "sim_start") {
+          set({ simulating: true, simProgress: 0, simTicker: [], lastRisk: null });
+          return;
+        }
+        if (e.kind === "sim") {
+          const prog = e.meta?.step && e.meta?.steps ? e.meta.step / e.meta.steps : get().simProgress;
+          set({
+            simProgress: prog,
+            simTicker: [{ content: e.content, ts: e.ts || "", kind: "sim" }, ...get().simTicker].slice(0, 8),
+          });
+          return;
+        }
+        if (e.kind === "risk") {
+          set({
+            lastRisk: e.content,
+            simTicker: [{ content: e.content, ts: e.ts || "", kind: "risk" }, ...get().simTicker].slice(0, 8),
+          });
+          return;
+        }
+        if (e.kind === "sim_done") {
+          set({
+            simulating: false, simProgress: 1,
+            simTicker: [{ content: e.content, ts: e.ts || "", kind: "done" }, ...get().simTicker].slice(0, 8),
+          });
+          get().fetchAll();
           return;
         }
 
@@ -104,6 +143,18 @@ export const useAxiom = create<State>((set, get) => ({
       kpis, history: hist, recommendations: recs, business: biz,
       executiveSummary: brief?.briefing ?? null,
     });
+  },
+
+  simulateDay: async () => {
+    if (get().simulating) return;
+    set({ simulating: true, simProgress: 0, simTicker: [], lastRisk: null });
+    try {
+      await fetch("/api/simulate/day", { method: "POST" });
+    } catch {
+      set({ simulating: false });
+    }
+    // Safety: if the sim_done event is missed, clear the flag after ~40s.
+    setTimeout(() => { if (get().simProgress >= 1 || get().simulating) set({ simulating: false }); }, 40000);
   },
 
   runBoardroom: async () => {

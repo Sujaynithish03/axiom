@@ -303,6 +303,72 @@ async def leadgen_convert(lead_id: int):
         raise HTTPException(500, f"convert failed: {e}")
 
 
+# ------- "Simulate a busy day" — the cinematic demo moment -------
+_sim_lock = asyncio.Lock()
+_SIM_CHANNELS = ["Instagram Reels", "Meta Ads", "WhatsApp broadcast",
+                 "Google Search", "Influencer collab", "Pop-up event"]
+
+
+@app.post("/api/simulate/day")
+async def simulate_day(background: BackgroundTasks):
+    """Fire ~100 events over ~30s: leads arrive, revenue books, a risk fires.
+    Every screen animates because it all streams over the WebSocket bus."""
+    async def go():
+        if _sim_lock.locked():
+            await bus.publish({"agent": "system", "kind": "sim",
+                               "content": "A day is already being simulated…"})
+            return
+        async with _sim_lock:
+            steps = 24
+            await bus.publish({"agent": "system", "kind": "sim_start",
+                               "content": "⚡ Simulating a busy day…",
+                               "meta": {"steps": steps}})
+            total_leads = 0
+            total_rev = 0.0
+            for i in range(steps):
+                n = random.randint(2, 5)
+                leads = capture_leads(channel=random.choice(_SIM_CHANNELS), n=n)
+                total_leads += n
+                booked = 0.0
+                with Session(engine) as s:
+                    for _ in range(random.randint(2, 6)):
+                        amt = float(random.choice([499, 999, 1999, 2999]))
+                        s.add(StripeTxn(date=date.today().isoformat(),
+                                        customer=f"sim_{i}", amount_inr=amt,
+                                        kind=random.choice(["new", "recurring"])))
+                        booked += amt
+                    s.commit()
+                total_rev += booked
+                await bus.publish({
+                    "agent": "system", "kind": "sim",
+                    "content": f"{n} leads via {leads[0]['source']} · ₹{booked:,.0f} booked",
+                    "meta": {"leads": n, "revenue": booked, "step": i + 1, "steps": steps},
+                })
+                # fire one risk alert ~60% of the way through
+                if i == int(steps * 0.6):
+                    with Session(engine) as s:
+                        s.add(RiskAlert(
+                            business_id=1, severity="high", agent="sales",
+                            title="Conversion rate dropped 12%",
+                            detail="WhatsApp channel lead quality fell — avg score 68→51 in the last hour.",
+                        ))
+                        s.commit()
+                    await bus.publish({
+                        "agent": "system", "kind": "risk",
+                        "content": "⚠️ Conversion rate dropped 12% in WhatsApp channel",
+                        "meta": {"severity": "high"},
+                    })
+                await asyncio.sleep(1.2)
+            await bus.publish({
+                "agent": "system", "kind": "sim_done",
+                "content": f"✅ Day complete — {total_leads} leads in, ₹{total_rev:,.0f} booked.",
+                "meta": {"leads": total_leads, "revenue": total_rev},
+            })
+
+    background.add_task(go)
+    return {"status": "started"}
+
+
 # ------- Boardroom trigger -------
 _boardroom_lock = asyncio.Lock()
 
