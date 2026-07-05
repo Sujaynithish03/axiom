@@ -1,5 +1,5 @@
 import {
-  Target, Megaphone, Magnet, TrendingUp, LineChart, HeartHandshake,
+  Target, Megaphone, Magnet, TrendingUp, LineChart, HeartHandshake, ImageIcon,
 } from "lucide-react";
 
 export interface EngineDef {
@@ -67,6 +67,15 @@ export const ENGINES: EngineDef[] = [
     icon: HeartHandshake,
     color: "#ED93B1",
     cta: "Generate success plan",
+  },
+  {
+    key: "adposter",
+    label: "Ad Poster",
+    title: "Ad Poster Engine",
+    subtitle: "Real-time ad creative, generated on demand by Gemini — the one engine that isn't fully local.",
+    icon: ImageIcon,
+    color: "#FFB454",
+    cta: "Generate poster",
   },
 ];
 

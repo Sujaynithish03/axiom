@@ -133,6 +133,22 @@ This is the honest blend the brief calls for: **real external market data + simu
 
 ---
 
+## Ad Poster Engine (the one non-local engine)
+
+Every other engine and agent runs entirely on the local `llama3.2` model. Image generation is the one thing a small local model can't do, so the **Ad Poster Engine** calls out to **Google Gemini** (`gemini-2.5-flash-image`) purely for that — nothing else about the business ever leaves the machine through this path beyond the poster brief itself.
+
+**Setup:**
+1. Get a free key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
+2. Add it to `backend/.env` (create the file if it doesn't exist — it's gitignored, never committed):
+   ```
+   GEMINI_API_KEY=your-key-here
+   ```
+3. Restart the backend. Open the **Ad Poster** tab, write a brief, and generate.
+
+If Google returns a quota or billing error, the app surfaces **their exact message** rather than a generic failure — check [ai.dev/rate-limit](https://ai.dev/rate-limit) for your key's current quota. New free-tier keys can take a little while for quota to provision; some models require a billing-enabled project even on the free tier.
+
+---
+
 ## Security (the LLM boundary)
 
 Four protections wrap every AI call — see the **Security** tab in the app:

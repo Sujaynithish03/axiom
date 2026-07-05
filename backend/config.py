@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.3
     llm_max_tokens: int = 400
 
+    # Gemini (Ad Poster Engine only — everything else stays local/free).
+    # Set GEMINI_API_KEY in backend/.env (gitignored, never committed).
+    gemini_api_key: str = ""
+    gemini_image_model: str = "gemini-2.5-flash-image"
+
     # DB
     db_path: str = "axiom.db"
 

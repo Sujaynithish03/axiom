@@ -8,6 +8,7 @@ import Onboarding from "./components/Onboarding";
 import EngineView from "./components/EngineView";
 import LeadGenView from "./components/LeadGenView";
 import SecurityView from "./components/SecurityView";
+import AdPosterView from "./components/AdPosterView";
 import { ENGINES } from "./engines";
 
 const ENGINE_KEYS = ENGINES.map((e) => e.key);
@@ -29,7 +30,10 @@ export default function App() {
       {view === "onboarding" && <Onboarding />}
       {view === "security" && <SecurityView />}
       {view === "leadgen" && <LeadGenView />}
-      {ENGINE_KEYS.includes(view) && view !== "leadgen" && <EngineView key={view} engineKey={view} />}
+      {view === "adposter" && <AdPosterView />}
+      {ENGINE_KEYS.includes(view) && view !== "leadgen" && view !== "adposter" && (
+        <EngineView key={view} engineKey={view} />
+      )}
     </Layout>
   );
 }

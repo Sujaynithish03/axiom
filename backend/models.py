@@ -120,6 +120,18 @@ class CompetitorSignal(SQLModel, table=True):
     detail: str
 
 
+class AdPoster(SQLModel, table=True):
+    """A generated ad poster — the only feature that calls out to Gemini
+    (image generation isn't something the local model can do)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ts: datetime = Field(default_factory=datetime.utcnow)
+    prompt: str
+    image_path: str          # relative path under backend/static/posters/
+    caption: Optional[str] = None
+    status: str = "ok"       # ok | error
+    error: Optional[str] = None
+
+
 class AuditLog(SQLModel, table=True):
     """Append-only record of every LLM interaction. Stores hashes + counts,
     never raw content — provably auditable without holding sensitive data."""

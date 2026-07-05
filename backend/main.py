@@ -8,6 +8,7 @@ from typing import Set
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -23,6 +24,7 @@ from engines import (
 from llm import stream_chat, check_ollama, complete_text
 from security import secure_input, filter_output, audit, INJECTION_SYSTEM_RULE
 from market_signals import live_signals
+from ad_poster import generate_poster, list_posters, PosterError, STATIC_DIR
 
 
 # ------- WebSocket bus -------
@@ -108,6 +110,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR.parent)), name="static")
 
 
 # ------- Health -------
@@ -316,6 +319,35 @@ async def engine_chat_endpoint(key: str, payload: EngineChatPayload):
             "meta": {"engine": key},
         })
     return res
+
+
+# ------- Ad Poster Engine: real-time ad creative via Gemini -------
+class PosterPayload(BaseModel):
+    brief: str
+
+
+@app.post("/api/adposter/generate")
+async def adposter_generate(payload: PosterPayload):
+    """Generate one ad poster via Gemini. Google's own error message (quota,
+    billing, invalid key, etc.) is surfaced as-is so the founder knows exactly
+    what to fix — never masked behind a generic 500."""
+    try:
+        poster = await generate_poster(payload.brief)
+    except PosterError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"unexpected error: {e}")
+    await bus.publish({
+        "agent": "adposter", "kind": "engine",
+        "content": "🖼️ Ad Poster Engine generated a new creative.",
+        "meta": {"engine": "adposter"},
+    })
+    return poster
+
+
+@app.get("/api/adposter/history")
+async def adposter_history(limit: int = 20):
+    return list_posters(limit=limit)
 
 
 # ------- Lead Gen Engine: capture + convert -------
