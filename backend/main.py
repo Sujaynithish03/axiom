@@ -22,6 +22,7 @@ from engines import (
 )
 from llm import stream_chat, check_ollama, complete_text
 from security import secure_input, filter_output, audit, INJECTION_SYSTEM_RULE
+from market_signals import live_signals
 
 
 # ------- WebSocket bus -------
@@ -229,6 +230,15 @@ async def list_risks():
 async def list_events(limit: int = 100):
     with Session(engine) as s:
         return s.exec(select(AgentEvent).order_by(AgentEvent.ts.desc()).limit(limit)).all()
+
+
+@app.get("/api/signals/live")
+async def get_live_signals():
+    """Real external market signals — Wikipedia interest + Google News, no keys."""
+    with Session(engine) as s:
+        biz = s.exec(select(Business)).first()
+    industry = biz.industry if biz else "D2C"
+    return await live_signals(industry)
 
 
 @app.get("/api/audit")

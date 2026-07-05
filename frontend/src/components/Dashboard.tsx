@@ -1,5 +1,6 @@
 import { useAxiom } from "../store";
 import KpiTile from "./KpiTile";
+import LiveSignals from "./LiveSignals";
 import RecommendationCard from "./RecommendationCard";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useEffect, useMemo } from "react";
@@ -286,6 +287,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Real external market signals */}
+      <LiveSignals />
 
       {/* AI Recommendations feed */}
       <section>

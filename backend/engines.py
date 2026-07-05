@@ -13,6 +13,7 @@ from llm import complete_json
 from security import (
     secure_input, fence_untrusted, filter_output, audit, INJECTION_SYSTEM_RULE,
 )
+from market_signals import live_signals, signals_summary
 
 
 def _business_ctx() -> dict:
@@ -42,6 +43,8 @@ def _strategy_prompt(ctx: dict) -> tuple[str, str]:
 About: {ctx['description']}
 Goals: {ctx['goals']}
 Market readiness: {k['market_readiness']}/100 · {k['competitor_signals']} competitor signals.
+
+REAL live market signals (external, fetched now): {ctx.get('signals_text', 'none')}
 
 Produce a strategy brief as JSON:
 {{
@@ -193,6 +196,12 @@ async def run_engine(key: str, extra: str | None = None) -> dict:
     if key not in ENGINE_BUILDERS:
         raise ValueError(f"unknown engine: {key}")
     ctx = _business_ctx()
+    # Strategy reasons over genuinely live external signals (real, not simulated).
+    if key == "strategy":
+        try:
+            ctx["signals_text"] = signals_summary(await live_signals(ctx["industry"]))
+        except Exception:
+            ctx["signals_text"] = "none"
     system, user = ENGINE_BUILDERS[key](ctx)
     if extra:
         user += (

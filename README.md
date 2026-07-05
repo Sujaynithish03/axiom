@@ -98,6 +98,19 @@ Watch the CEO Agent synthesize all four into a coherent morning briefing.
 
 ---
 
+## Real external data (genuinely live, no keys)
+
+The **Live Market Signals** panel on the dashboard and the Strategy engine both pull real, external data — free and key-less:
+
+- **Wikipedia pageviews** — real 30-day interest trend for the product category (e.g. "Skin care").
+- **Google News RSS** — real, on-topic industry headlines (e.g. *"Sotrue crosses ₹100 Cr ARR"*), with clickable source links.
+
+The Strategy engine injects these into its prompt, so its market research is grounded in genuinely live signals — not simulated. Everything degrades gracefully offline. Results are cached for 15 minutes. Endpoint: `GET /api/signals/live`.
+
+This is the honest blend the brief calls for: **real external market data + simulated internal events** (leads/revenue), each clearly labelled.
+
+---
+
 ## Security (the LLM boundary)
 
 Four protections wrap every AI call — see the **Security** tab in the app:
