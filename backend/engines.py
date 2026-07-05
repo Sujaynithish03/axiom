@@ -181,23 +181,98 @@ ENGINE_BUILDERS = {
 ENGINE_KEYS = list(ENGINE_BUILDERS.keys())
 
 
-async def run_engine(key: str) -> dict:
-    """Run one engine's AI generation and persist the latest output."""
+async def run_engine(key: str, extra: str | None = None) -> dict:
+    """Run one engine's AI generation and persist the latest output.
+
+    `extra` injects a founder instruction so the engine's chatbot can steer the
+    regenerated plan (e.g. "make pricing 20% cheaper", "go heavier on WhatsApp").
+    """
     if key not in ENGINE_BUILDERS:
         raise ValueError(f"unknown engine: {key}")
     ctx = _business_ctx()
     system, user = ENGINE_BUILDERS[key](ctx)
+    if extra:
+        user += (
+            f"\n\nIMPORTANT — the founder asked you to revise the plan. "
+            f"Regenerate it, keeping the same JSON shape, to satisfy this: {extra}"
+        )
     # Engine schemas are richer than agent calls — give the model room so the
-    # JSON isn't truncated mid-object (which would fail to parse).
+    # JSON isn't truncated mid-object (which would fail to parse). Small local
+    # models occasionally return empty/malformed output, so retry once.
     result = await complete_json(system, user, max_tokens=1400)
+    if result.get("error"):
+        result = await complete_json(system, user, max_tokens=1400)
 
-    with Session(db_engine) as s:
-        biz = s.exec(select(Business)).first()
-        bid = biz.id if biz else 1
-        row = EngineOutput(business_id=bid, engine=key, payload=result)
-        s.add(row)
-        s.commit()
+    # Never persist a broken result over a previously-good plan.
+    if not result.get("error"):
+        with Session(db_engine) as s:
+            biz = s.exec(select(Business)).first()
+            bid = biz.id if biz else 1
+            row = EngineOutput(business_id=bid, engine=key, payload=result)
+            s.add(row)
+            s.commit()
     return result
+
+
+_ENGINE_PERSONA = {
+    "strategy": "the Strategy Engine — market research, positioning and pricing",
+    "marketing": "the Marketing Engine — 360° multi-channel marketing",
+    "leadgen": "the Lead Gen Engine — acquiring and converting leads",
+    "sales": "the Sales Engine — funnel, deals and outreach",
+    "analytics": "the Analytics Engine — forecasting, insight and roadmaps",
+    "success": "the Customer Success Engine — churn, support and success plays",
+}
+
+
+async def engine_chat(key: str, message: str) -> dict:
+    """A dedicated chatbot per engine. Answers grounded in that engine's current
+    plan — and if the founder asks to change something, regenerates the plan so
+    the engine's data updates dynamically."""
+    if key not in ENGINE_BUILDERS:
+        raise ValueError(f"unknown engine: {key}")
+    import json as _json
+
+    latest = latest_engine(key)
+    payload = latest["payload"] if latest else {}
+    ctx = _business_ctx()
+    k = ctx["kpis"]
+
+    persona = _ENGINE_PERSONA.get(key, "an AI business engine")
+    system = (
+        f"You are {persona} for {ctx['name']} ({ctx['industry']}). "
+        "Answer the founder's message conversationally and specifically, grounded in the "
+        "current plan and metrics. Decide whether they are asking you to CHANGE the plan. "
+        "Return only valid JSON."
+    )
+    user = f"""Current plan (JSON): {_json.dumps(payload)[:1600]}
+Live metrics: Business Health {k['business_health']}/100 · MRR ₹{k['mrr']:,.0f} · Growth {k['growth_pct']:+.1f}%.
+
+Founder says: "{message}"
+
+Return JSON:
+{{
+  "reply": "your answer to the founder, 2-4 sentences, specific",
+  "apply_change": true or false,
+  "instruction": "if apply_change is true, a crisp instruction describing how to revise the plan; otherwise empty string"
+}}"""
+
+    meta = await complete_json(system, user, max_tokens=450)
+    reply = meta.get("reply") or "Here's my take."
+    apply = bool(meta.get("apply_change"))
+    instruction = (meta.get("instruction") or "").strip()
+
+    new_payload = None
+    if apply and instruction:
+        try:
+            candidate = await run_engine(key, extra=instruction)
+            if candidate and not candidate.get("error"):
+                new_payload = candidate
+        except Exception:
+            new_payload = None
+        if new_payload is None:
+            reply += " (I couldn't cleanly rewrite the plan just now — try rephrasing, or hit Regenerate.)"
+
+    return {"reply": reply, "updated": new_payload is not None, "payload": new_payload}
 
 
 def latest_engine(key: str) -> dict | None:

@@ -17,7 +17,7 @@ from mocks.seed import seed_all
 from metrics import compute_kpis, kpi_history
 from orchestrator import run_boardroom
 from engines import (
-    run_engine, latest_engine, ENGINE_KEYS,
+    run_engine, latest_engine, ENGINE_KEYS, engine_chat,
     capture_leads, list_leads, convert_lead,
 )
 from llm import stream_chat, check_ollama, complete_text
@@ -269,6 +269,29 @@ async def run_engine_endpoint(key: str):
         "meta": {"engine": key},
     })
     return {"engine": key, "payload": result}
+
+
+class EngineChatPayload(BaseModel):
+    message: str
+
+
+@app.post("/api/engines/{key}/chat")
+async def engine_chat_endpoint(key: str, payload: EngineChatPayload):
+    """Per-engine chatbot. Answers grounded in the engine's plan, and can
+    regenerate that plan dynamically when the founder asks for a change."""
+    if key not in ENGINE_KEYS:
+        raise HTTPException(404, f"unknown engine: {key}")
+    try:
+        res = await engine_chat(key, payload.message)
+    except Exception as e:
+        raise HTTPException(500, f"engine chat failed: {e}")
+    if res.get("updated"):
+        await bus.publish({
+            "agent": key, "kind": "engine",
+            "content": f"💬 {key.capitalize()} Engine revised its plan from chat.",
+            "meta": {"engine": key},
+        })
+    return res
 
 
 # ------- Lead Gen Engine: capture + convert -------

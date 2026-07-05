@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAxiom } from "../store";
 import { engineByKey } from "../engines";
+import EngineChat from "./EngineChat";
 import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 
 const humanize = (k: string) =>
@@ -144,6 +145,9 @@ export default function EngineView({ engineKey }: { engineKey: string }) {
           <ObjectBlock obj={output} accent={def.color} />
         </div>
       )}
+
+      {/* Dedicated AI chatbot for this engine — can rewrite the plan above */}
+      {hasOutput && <EngineChat engineKey={engineKey} accent={def.color} label={def.label} />}
     </div>
   );
 }

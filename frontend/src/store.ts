@@ -28,6 +28,7 @@ interface State {
   saveBusiness: (b: Partial<Business>) => Promise<void>;
   fetchEngine: (key: string) => Promise<void>;
   runEngine: (key: string) => Promise<void>;
+  chatEngine: (key: string, message: string) => Promise<{ reply: string; updated: boolean }>;
 }
 
 const AGENTS = ["ceo", "marketing", "sales", "finance", "strategy", "learning"];
@@ -209,5 +210,18 @@ export const useAxiom = create<State>((set, get) => ({
     } finally {
       set({ engineBusy: { ...get().engineBusy, [key]: false } });
     }
+  },
+
+  chatEngine: async (key, message) => {
+    const r = await fetch(`/api/engines/${key}/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+    }).then((x) => x.json());
+    // If the chat revised the plan, swap the engine's data in live.
+    if (r?.updated && r?.payload) {
+      set({ engineOutputs: { ...get().engineOutputs, [key]: r.payload } });
+    }
+    return { reply: r?.reply || "…", updated: !!r?.updated };
   },
 }));
