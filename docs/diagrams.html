@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AXIOM OS — Growth Flow & Architecture</title>
+<style>
+  :root {
+    --bg: #070A14;
+    --surface: #0E1424;
+    --surface2: #151C33;
+    --border: #1F2942;
+    --ink: #E8ECF5;
+    --muted: #8B93A7;
+    --mint: #00E5A0;
+    --mint-dim: #00A876;
+    --coral: #F0997B;   /* marketing */
+    --jade: #5DCAA5;    /* sales */
+    --amber: #EF9F27;   /* finance */
+    --peri: #AFA9EC;    /* strategy */
+    --rose: #ED93B1;    /* learning */
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(0,229,160,0.06), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 40px) 80px; }
+
+  /* ---- Masthead ---- */
+  .mast { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 48px; }
+  .brandrow { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 0 rgba(0,229,160,.7); animation: pulse 2.4s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0,229,160,.6);} 70% { box-shadow: 0 0 0 10px rgba(0,229,160,0);} 100% { box-shadow: 0 0 0 0 rgba(0,229,160,0);} }
+  .brand { font-family: var(--mono); font-weight: 700; letter-spacing: .28em; color: var(--mint); font-size: 14px; }
+  h1 { font-size: clamp(28px, 5vw, 46px); line-height: 1.04; margin: 18px 0 10px; letter-spacing: -0.02em; text-wrap: balance; font-weight: 700; }
+  .lede { color: var(--muted); font-size: clamp(15px, 2vw, 17px); max-width: 62ch; }
+  .deliv { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--muted); border: 1px solid var(--border); background: var(--surface); padding: 5px 10px; border-radius: 999px; }
+  .tag b { color: var(--mint); font-weight: 600; }
+
+  /* ---- Section scaffolding ---- */
+  section { margin-top: 64px; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .eyebrow .rule { flex: 1; height: 1px; background: var(--border); }
+  .eyebrow .pct { color: var(--mint); }
+  h2 { font-size: clamp(20px, 3vw, 27px); margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14.5px; margin: 0 0 26px; max-width: 68ch; }
+
+  /* ---- Diagram frame ---- */
+  .frame { background: linear-gradient(180deg, var(--surface), #0b1120); border: 1px solid var(--border); border-radius: 14px; padding: clamp(18px, 3vw, 30px); }
+  .scroll { overflow-x: auto; padding-bottom: 6px; }
+  .scroll::-webkit-scrollbar { height: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ================= GROWTH FLOW ================= */
+  .fiveD { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; min-width: 720px; margin-bottom: 8px; }
+  .phase { text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mint); padding: 7px 4px; border: 1px dashed rgba(0,229,160,.32); border-radius: 8px; background: rgba(0,229,160,.05); }
+  .phase small { display: block; color: var(--muted); letter-spacing: .02em; text-transform: none; margin-top: 3px; font-size: 10px; }
+
+  .pipe { display: flex; align-items: stretch; gap: 0; min-width: 860px; margin-top: 18px; }
+  .node { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .node .k { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .08em; }
+  .node .t { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+  .node .d { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+  .node.term { border-color: rgba(0,229,160,.5); background: linear-gradient(180deg, rgba(0,229,160,.12), var(--surface2)); }
+  .arrow { display: flex; align-items: center; color: var(--mint-dim); flex: 0 0 26px; justify-content: center; font-size: 18px; }
+
+  .loop { margin-top: 16px; display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--rose); border-top: 1px dashed var(--border); padding-top: 16px; min-width: 720px; }
+  .loop .badge { border: 1px solid rgba(237,147,177,.4); background: rgba(237,147,177,.08); color: var(--rose); padding: 4px 10px; border-radius: 999px; font-size: 11px; letter-spacing: .05em; }
+  .loop span.txt { color: var(--muted); }
+
+  /* ================= ARCHITECTURE ================= */
+  .stack { display: flex; flex-direction: column; gap: 0; min-width: 640px; }
+  .layer { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: center; }
+  .layer .lname { display: flex; flex-direction: column; gap: 4px; }
+  .layer .lname .n { font-weight: 700; font-size: 14px; }
+  .layer .lname .h { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: .04em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip { font-family: var(--mono); font-size: 11.5px; padding: 6px 11px; border-radius: 7px; background: var(--surface); border: 1px solid var(--border); color: var(--ink); }
+  .chip.k { color: var(--mint); border-color: rgba(0,229,160,.3); }
+  .flowbtwn { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-family: var(--mono); font-size: 10.5px; padding: 7px 0; }
+  .flowbtwn .ln { width: 1px; height: 16px; background: linear-gradient(var(--mint-dim), transparent); }
+
+  /* agent grid inside AI layer */
+  .agents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+  @media (max-width: 560px) { .agents { grid-template-columns: repeat(2, 1fr); } }
+  .agent { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 9px 11px; display: flex; flex-direction: column; gap: 2px; }
+  .agent .ah { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12.5px; }
+  .agent .ad { font-size: 10.5px; color: var(--muted); font-family: var(--mono); letter-spacing: .01em; }
+  .idot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+
+  /* ---- Agent spec table ---- */
+  .tablecard { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  thead th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 12px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td.role { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  tbody td.name { font-weight: 600; white-space: nowrap; }
+  tbody td.name .idot { display: inline-block; margin-right: 7px; vertical-align: middle; }
+
+  footer { margin-top: 64px; border-top: 1px solid var(--border); padding-top: 22px; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+  footer .local { font-family: var(--mono); color: var(--mint); font-size: 12px; }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="brandrow"><span class="dot"></span><span class="brand">AXIOM&nbsp;OS</span></div>
+    <h1>The AI Business Growth Operating System</h1>
+    <p class="lede">A boardroom of six AI executives that analyses a business, decides a strategy, acts on it, and improves every night — running entirely on a laptop with local, free models. No API keys. No data leaving the machine.</p>
+    <div class="deliv">
+      <span class="tag"><b>Deliverable</b> · Business Growth Flow — 10%</span>
+      <span class="tag"><b>Deliverable</b> · AI Architecture — 10%</span>
+      <span class="tag"><b>Framework</b> · Discover → Design → Deliver → Develop → Dominate</span>
+    </div>
+  </header>
+
+  <!-- ============ BUSINESS GROWTH FLOW ============ -->
+  <section>
+    <div class="eyebrow"><span>Diagram 01 — Business Growth Flow</span><span class="rule"></span><span class="pct">10%</span></div>
+    <h2>From a business owner's input to a measurable growth outcome</h2>
+    <p class="sub">The sponsor's required flow, mapped onto the 5D framework. Each stage is a real step in the system — not a slide. The dashed arc is the loop most prototypes only claim: results feed back and retrain the agents.</p>
+
+    <div class="frame">
+      <div class="scroll">
+        <!-- 5D band -->
+        <div class="fiveD">
+          <div class="phase">Discover<small>onboard + analyse</small></div>
+          <div class="phase">Design<small>generate strategy</small></div>
+          <div class="phase">Deliver<small>recommend + execute</small></div>
+          <div class="phase">Develop<small>measure + learn</small></div>
+          <div class="phase">Dominate<small>KPI dashboard</small></div>
+        </div>
+
+        <!-- pipeline -->
+        <div class="pipe">
+          <div class="node term"><span class="k">01 · USER</span><span class="t">Business Owner</span><span class="d">Starts the day. One click: "Start day."</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">02 · DISCOVER</span><span class="t">Business Discovery</span><span class="d">Onboarding profile + GA4 / Stripe / CRM data pulled in.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">03 · DISCOVER</span><span class="t">AI Analysis</span><span class="d">9 KPIs computed. 6 agents read the numbers in parallel.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">04 · DESIGN</span><span class="t">Strategy</span><span class="d">CEO synthesises agents into ranked strategic decisions.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">05 · DELIVER</span><span class="t">Execution</span><span class="d">Approve / Execute campaigns, deals, cash moves.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">06 · DEVELOP</span><span class="t">Analytics</span><span class="d">Outcomes measured against the strategy.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node"><span class="k">07 · DELIVER</span><span class="t">Recommendations</span><span class="d">Live feed of next best actions per agent.</span></div>
+          <div class="arrow">▸</div>
+          <div class="node term"><span class="k">08 · DOMINATE</span><span class="t">Business Growth</span><span class="d">Health score climbs. Owner checks it every morning.</span></div>
+        </div>
+
+        <!-- feedback loop -->
+        <div class="loop">
+          <span class="badge">↺ Develop → Discover</span>
+          <span class="txt">The Learning Agent compares predicted vs. actual outcomes and rewrites each agent's priors — so tomorrow's analysis starts smarter than today's.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section>
+    <div class="eyebrow"><span>Diagram 02 — System Architecture</span><span class="rule"></span><span class="pct">10%</span></div>
+    <h2>Frontend → Backend → AI Layer → Knowledge → Database → Dashboard</h2>
+    <p class="sub">One page, real stack. Every tier runs locally; the only "network call" is the backend talking to Ollama on <span style="font-family:var(--mono);color:var(--mint)">localhost:11434</span>.</p>
+
+    <div class="frame">
+      <div class="scroll">
+        <div class="stack">
+
+          <div class="layer">
+            <div class="lname"><span class="n">Frontend</span><span class="h">:5173</span></div>
+            <div class="chips">
+              <span class="chip">React 18</span><span class="chip">Vite</span><span class="chip">TypeScript</span>
+              <span class="chip">Tailwind</span><span class="chip">Zustand</span><span class="chip">Recharts</span>
+              <span class="chip">Framer Motion</span>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>HTTP · WebSocket · SSE<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">Backend</span><span class="h">FastAPI · :8000</span></div>
+            <div class="chips">
+              <span class="chip k">WebSocket bus</span><span class="chip">REST API</span>
+              <span class="chip">Copilot (SSE stream)</span><span class="chip">Orchestrator</span>
+              <span class="chip">Live heartbeat</span><span class="chip">SQLModel</span>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>async parallel dispatch<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">AI Layer</span><span class="h">6 agents → LLM</span></div>
+            <div class="agents">
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--mint)"></span>CEO</span><span class="ad">synthesis + briefing</span></div>
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--coral)"></span>Marketing</span><span class="ad">campaigns + ROAS</span></div>
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--jade)"></span>Sales</span><span class="ad">pipeline + deals</span></div>
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--amber)"></span>Finance</span><span class="ad">burn + runway</span></div>
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--peri)"></span>Strategy</span><span class="ad">competitors + bets</span></div>
+              <div class="agent"><span class="ah"><span class="idot" style="background:var(--rose)"></span>Learning</span><span class="ad">feedback loop</span></div>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>local inference<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">LLM Engine</span><span class="h">Ollama · :11434</span></div>
+            <div class="chips">
+              <span class="chip k">llama3.2 (local)</span><span class="chip">JSON mode</span>
+              <span class="chip">token streaming</span><span class="chip">↔ qwen2.5 swap-in</span>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>reads business context<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">Knowledge</span><span class="h">data connectors</span></div>
+            <div class="chips">
+              <span class="chip">GA4 (traffic)</span><span class="chip">Stripe (revenue)</span>
+              <span class="chip">CRM (leads)</span><span class="chip">Competitor signals</span>
+              <span class="chip">→ swappable for real APIs</span>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>persist + query<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">Database</span><span class="h">SQLite (local file)</span></div>
+            <div class="chips">
+              <span class="chip">Business</span><span class="chip">KPI snapshots</span>
+              <span class="chip">Agent events</span><span class="chip">Recommendations</span><span class="chip">Decisions</span>
+            </div>
+          </div>
+
+          <div class="flowbtwn"><span class="ln"></span>renders<span class="ln"></span></div>
+
+          <div class="layer">
+            <div class="lname"><span class="n">Dashboard</span><span class="h">what the owner sees</span></div>
+            <div class="chips">
+              <span class="chip k">9 KPIs</span><span class="chip">Executive Summary</span>
+              <span class="chip">Boardroom (live)</span><span class="chip">Copilot</span><span class="chip">Risk alerts</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SIX ENGINES ============ -->
+  <section>
+    <div class="eyebrow"><span>Product — The Six Business Engines</span><span class="rule"></span><span class="pct">Round 2</span></div>
+    <h2>Six AI-driven engines, one operating system</h2>
+    <p class="sub">The agent boardroom powers six product engines a business owner works in directly. Each runs a structured local-LLM generation over live business data.</p>
+
+    <div class="frame">
+      <div class="agents" style="grid-template-columns:repeat(3,1fr)">
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--peri)"></span>Strategy</span><span class="ad">market research · positioning · pricing</span></div>
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--coral)"></span>Marketing</span><span class="ad">360° channel plan · ROAS · creative</span></div>
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--info,#5EA0FF)"></span>Lead Gen</span><span class="ad">digital · WhatsApp · physical leads</span></div>
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--jade)"></span>Sales</span><span class="ad">funnel · priority deals · outreach</span></div>
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--mint)"></span>Analytics</span><span class="ad">forecast · insight · roadmap</span></div>
+        <div class="agent"><span class="ah"><span class="idot" style="background:var(--rose)"></span>Customer Success</span><span class="ad">churn · playbooks · AI chatbot</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AGENT SPEC ============ -->
+  <section>
+    <div class="eyebrow"><span>Reference — The AI Agents</span><span class="rule"></span><span class="pct">15%</span></div>
+    <h2>Six agents, each with a defined Role, Input & Output</h2>
+    <p class="sub">The sponsor requires at least five. AXIOM ships six — four tactical specialists, a synthesising CEO, and a Learning agent that closes the Develop→Discover loop.</p>
+
+    <div class="tablecard scroll">
+      <table>
+        <thead>
+          <tr><th>Agent</th><th>Role</th><th>Input</th><th>Output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--mint)"></span>CEO</td>
+            <td class="role">Chief of staff — synthesis &amp; decisions</td>
+            <td>All four tactical agent reports + KPIs</td>
+            <td>Morning briefing + 3 ranked decisions</td>
+          </tr>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--coral)"></span>Marketing</td>
+            <td class="role">Growth — campaigns</td>
+            <td>GA4 traffic, funnel, sources, bounce</td>
+            <td>Campaign plays with predicted ROAS + budget</td>
+          </tr>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--jade)"></span>Sales</td>
+            <td class="role">Pipeline doctor</td>
+            <td>CRM leads, stages, deal size, last-touch</td>
+            <td>Priority deals to unblock + est. lift</td>
+          </tr>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--amber)"></span>Finance</td>
+            <td class="role">CFO — cashflow guardian</td>
+            <td>Revenue, burn multiple, runway, churn</td>
+            <td>Cash decision (₹) + spending guardrail</td>
+          </tr>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--peri)"></span>Strategy</td>
+            <td class="role">Board advisor</td>
+            <td>Competitor signals, market moves</td>
+            <td>Top threat + strategic bet + stop-doing</td>
+          </tr>
+          <tr>
+            <td class="name"><span class="idot" style="background:var(--rose)"></span>Learning</td>
+            <td class="role">Feedback loop (Develop)</td>
+            <td>Recommendation + decision history</td>
+            <td>Per-agent prior adjustments</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span class="local">◆ 100% local · free models · zero cloud bills</span>
+    <span>AXIOM OS — Enterprise AI / Agentic Business Systems</span>
+  </footer>
+
+</div>
+
+</body>
+</html>

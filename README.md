@@ -21,7 +21,29 @@ On top of the live agent boardroom, AXIOM exposes the sponsor's six AI-driven **
 | **Analytics** | A 3-month MRR forecast, competitive insight, and a quarterly roadmap |
 | **Customer Success** | Customer-health read, at-risk segments, success playbook, chatbot greeting |
 
-Each engine lives at `POST /api/engines/{key}/run` and persists its latest output. The frontend renders any engine's output through one generic recursive view, so the shape is resilient to small-model variation.
+Each engine lives at `POST /api/engines/{key}/run` and persists its latest output. The frontend renders any engine's output through one generic recursive view, so the shape is resilient to small-model variation. Every engine also has its **own AI chatbot** that can rewrite that engine's plan on request ("make pricing 30% cheaper" → the tiers actually drop).
+
+---
+
+## What's inside (deliverables map)
+
+| Sponsor requirement | Where it is |
+|---------------------|-------------|
+| Full 5D framework (Discover→Design→Deliver→Develop→Dominate) | The boardroom run in `orchestrator.py` |
+| ≥5 AI agents (Role/Responsibility/Input/Output) | 6 agents in `backend/agents/` (table below) |
+| Business onboarding | **Business** tab |
+| AI business analysis + strategy generation | Agents + Strategy engine |
+| Campaign & sales recommendations | Marketing/Sales/Lead Gen engines + AI recs feed |
+| KPI dashboard (9 sections) | **Dashboard** — Executive Summary + 9 KPIs + risk alerts |
+| AI copilot | **Copilot** tab (streaming, grounded in live KPIs) |
+| 6 business engines, each AI-driven | **Strategy / Marketing / Lead Gen / Sales / Analytics / Customer Success** |
+| Per-engine chatbots that change data dynamically | Chat panel inside every engine |
+| Real-time feel | Live heartbeat + "Simulate a busy day" + Present Mode |
+| Real external data | **Live Market Signals** (Wikipedia + Google News) |
+| Security / data protection | **Security** tab (PII redaction, injection defense, output filter, audit log) |
+| Third-party disclosure | [`CITATIONS.md`](CITATIONS.md) |
+
+All AI runs on **local llama3.2** — zero API keys, zero cloud bills. See [`CITATIONS.md`](CITATIONS.md) for full disclosure.
 
 ---
 
