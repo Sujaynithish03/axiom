@@ -20,7 +20,7 @@ from engines import (
     run_engine, latest_engine, ENGINE_KEYS,
     capture_leads, list_leads, convert_lead,
 )
-from llm import stream_chat, check_ollama
+from llm import stream_chat, check_ollama, complete_text
 
 
 # ------- WebSocket bus -------
@@ -359,6 +359,34 @@ async def simulate_day(background: BackgroundTasks):
                         "meta": {"severity": "high"},
                     })
                 await asyncio.sleep(1.2)
+
+            # Regenerate the Executive Summary so it reflects the day just simulated
+            # (fast single call — the full CEO briefing takes a whole boardroom run).
+            try:
+                kp = compute_kpis()
+                recap_system = (
+                    "You are the CEO Agent giving a 3-sentence end-of-day recap to the founder. "
+                    "Warm, direct, specific. Mention the day's momentum and the risk that surfaced."
+                )
+                recap_user = (
+                    f"Today {total_leads} new leads came in and ₹{total_rev:,.0f} in revenue booked.\n"
+                    f"A risk fired: conversion rate dropped 12% in the WhatsApp channel (lead quality 68→51).\n"
+                    f"Current Business Health {kp['business_health']}/100, MRR ₹{kp['mrr']:,.0f}, "
+                    f"runway {kp['runway_months']:.1f} months.\n"
+                    "Write the 3-sentence recap now."
+                )
+                recap = (await complete_text(recap_system, recap_user) or "").strip()
+                # Drop a leading "Here is a ... recap:" style preamble if present.
+                parts = recap.split("\n\n", 1)
+                if len(parts) == 2 and parts[0].rstrip().endswith(":") and len(parts[0]) < 80:
+                    recap = parts[1].strip()
+                with Session(engine) as s:
+                    s.add(AgentEvent(agent="ceo", kind="insight", content=recap,
+                                     meta={"briefing": True, "source": "simulation"}))
+                    s.commit()
+            except Exception:
+                pass
+
             await bus.publish({
                 "agent": "system", "kind": "sim_done",
                 "content": f"✅ Day complete — {total_leads} leads in, ₹{total_rev:,.0f} booked.",
